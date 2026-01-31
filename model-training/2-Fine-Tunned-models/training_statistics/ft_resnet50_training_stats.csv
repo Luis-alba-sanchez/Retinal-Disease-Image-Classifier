@@ -1,0 +1,2 @@
+epoch,train_losses,train_accuracies,train_f1s,train_roc_aucs,val_losses,val_accuracies,val_f1s,val_roc_aucs
+0,0.019530546327587217,0.1876953125,0.022732769044740024,0.5001828496856187,0.009081317787058651,0.209375,0.0,0.5
