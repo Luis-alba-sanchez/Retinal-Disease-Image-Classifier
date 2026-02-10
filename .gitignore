@@ -1,16 +1,12 @@
-.venv
-ML_S7_Eye_Classifier/
-
-data/Evaluation-Set/Validation_Labels.csv
+.venv/
+data/Evaluation-Set/
 data/Training-Set/Training_Labels.csv
-data/Training-Set/Training_Labels_Backup.csv
-data/Evaluation-Set/Validation/*
-data/Training-Set/Training/*
+data/Training-Set/
 
 model-training/0-first-model-test/
 
 *.pth
 
 test.ipynb
-__pycache__/
-
+*__pycache__/
+to test.csv
