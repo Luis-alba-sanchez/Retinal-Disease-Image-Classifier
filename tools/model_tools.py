@@ -24,12 +24,12 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
     for _, all in tqdm(enumerate(train_loader), total=len(train_loader)):
         images, labels = all[0].to(device), all[1].to(device)
         optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+        outputs = model(images) # gets the logits (raw outputs) from the model
+        loss = criterion(outputs, labels) # computes the loss between the model's (sigmoided) outputs and the true labels
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        preds = torch.sigmoid(outputs) > 0.5
+        preds = torch.sigmoid(outputs) > 0.5 # applies sigmoid to get probabilities and then thresholds at 0.5 to get binary predictions
         train_preds.extend(preds.cpu().detach().numpy())
         train_targets.extend(labels.cpu().detach().numpy())
 
@@ -73,7 +73,7 @@ def validate(model, val_loader, criterion, device):
     return val_loss, val_accuracy, val_f1, val_roc_auc
 
 
-def train_and_test_model(model, dataset, optimizer, criterion, device, batch_size=32, test_size=0.3):
+def train_and_test_model(model, train_loader, test_loader, optimizer, criterion, device, batch_size=32, test_size=0.3):
     """
     Performs training and evaluation of the given model on the provided dataset.
     
@@ -84,17 +84,11 @@ def train_and_test_model(model, dataset, optimizer, criterion, device, batch_siz
     :param device: Device to run training and evaluation on (e.g., 'cuda' or 'cpu')
     :param batch_size: Batch size for training and evaluation (int)
     """
-    # Split dataset into train and test
-    train_dataset, test_dataset = train_test_split(dataset, test_size=test_size, random_state=42)
-    
-    # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
     # Train the model
     train_loss, train_accuracy, train_f1, train_roc_auc = train_one_epoch(model, train_loader, optimizer, criterion, device)
     
-    # Evaluate on test set
+    # Testing on test set
     test_loss, test_accuracy, test_f1, test_roc_auc = validate(model, test_loader, criterion, device)
     
     return train_loss, train_accuracy, train_f1, train_roc_auc, test_loss, test_accuracy, test_f1, test_roc_auc

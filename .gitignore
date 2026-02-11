@@ -1,12 +1,6 @@
 .venv/
-data/Evaluation-Set/
-data/Training-Set/Training_Labels.csv
-data/Training-Set/
-
-model-training/0-first-model-test/
-
+data/
 *.pth
-
 test.ipynb
 *__pycache__/
 to test.csv

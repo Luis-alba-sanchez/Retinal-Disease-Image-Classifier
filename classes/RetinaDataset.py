@@ -8,9 +8,17 @@ import pandas as pd
 import os
 from PIL import Image
 import torch
+import numpy as np
 
 class RetinaDataset(Dataset):
-    def __init__(self, root_dir, csv_file, transform=None, type_of_classification="binary", label_for_multilabel_classification=["DR", "MH", "ODC"]):
+    def __init__(
+            self, 
+            root_dir, 
+            csv_file, 
+            transform=None, 
+            type_of_classification="binary", 
+            label_for_multilabel_classification=["DR", "MH", "ODC"], 
+            add_normal_label=False):
         """
         Args:
             root_dir (string): Directory containing the images.
@@ -18,6 +26,7 @@ class RetinaDataset(Dataset):
             transform (callable, optional): Transformations to apply on the images.
             type_of_classification (string): Type of classification ("binary" or "multilabel").
             label_for_multilabel_classification (list): List of column names to use as labels for multilabel classification (ignored if type_of_classification is "binary").
+            add_normal_label (bool): Whether to add a "normal" label for samples that have no positive labels (default: False).
 
         Necessary data structure:
             - Directory : Evaluation-Set/Validation/ & Evaluation-Set/Validation_Labels.csv, Training-Set/Training/ & Training-Set/Training_Labels.csv
@@ -27,14 +36,35 @@ class RetinaDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
         self.labels_df = pd.read_csv(csv_file)
-        # On suppose que l'ID est la première colonne et que les labels commencent à la 3ème colonne (ex: DR, ARMD, etc.)
+
+        # The ID is the first column, desease_risk the second and the others are the labels of the pathologies
         if type_of_classification == "binary":
-            self.labels = self.labels_df.iloc[:, 1:2].values.copy()  # On ignore la 2ème colonne (Disease_Risk) car elle n'est pas un label
-        elif type_of_classification == "multilabel":
-            self.labels = self.labels_df[label_for_multilabel_classification].values.copy()  # On sélectionne uniquement les colonnes correspondant aux labels de classification multilabel
+            self.labels = self.labels_df.iloc[:, 1:2].values.copy() 
+            self.image_ids = self.labels_df.iloc[:, 0].values
+
+        elif type_of_classification == "multilabel" and add_normal_label:
+            # On ajoute une colonne "Normal" basée sur la colonne Disease_Risk
+            # Supprimer les lignes où tous les labels sélectionnés sont 0
+            # (incluant la colonne "Normal" inversée) pour n'entraîner que
+            # sur les images contenant au moins une des pathologies choisies.
+            normal_label = np.array(self.labels_df["Disease_Risk"].replace([0, 1], [1, 0])).reshape(-1, 1)
+            disease_labels = self.labels_df[label_for_multilabel_classification].values
+            all_labels = np.concatenate((disease_labels, normal_label), axis=1)
+            # Garder uniquement les lignes où au moins un label (disease ou normal) est positif
+            mask = all_labels.sum(axis=1) > 0
+            self.labels_df = self.labels_df[mask].reset_index(drop=True)
+            self.labels = all_labels[mask]
+            self.image_ids = self.labels_df.iloc[:, 0].values
+
+        elif type_of_classification == "multilabel" and not add_normal_label:
+            self.labels = self.labels_df[label_for_multilabel_classification].values.copy()
+            labels_df = self.labels_df[label_for_multilabel_classification].copy()
+            mask = labels_df.sum(axis=1) > 0
+            self.labels_df = self.labels_df[mask].reset_index(drop=True)
+            self.labels = self.labels_df[label_for_multilabel_classification].values.copy()
+            self.image_ids = self.labels_df.iloc[:, 0].values
         else:
             raise ValueError("type_of_classification must be 'binary' or 'multilabel'")
-        self.image_ids = self.labels_df.iloc[:, 0].values  # ID des images
 
     def __len__(self):
         return len(self.labels_df)

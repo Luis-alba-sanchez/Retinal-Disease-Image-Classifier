@@ -34,4 +34,4 @@ class CNNMultiClassMultiLabeling(nn.Module):
         x = x.view(-1, 64 * 64 * 64)  # Aplatir
         x = self.dropout1(F.relu(self.fc1(x)))
         x = self.dropout2(F.relu(self.fc2(x)))
-        return torch.sigmoid(self.fc3(x)) 
+        return self.fc3(x) 
