@@ -1,12 +1,10 @@
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import torch
-from torch.utils.data import DataLoader
 from tqdm import tqdm
+from torchmetrics.classification import MultilabelAccuracy, MultilabelF1Score, MultilabelAUROC
+from torch.amp import autocast
 
 
-
-def train_one_epoch(model, train_loader, optimizer, criterion, device):
+def train_one_epoch(model, train_loader, optimizer, criterion, device, num_labels, scaler=None):
     """
     Performs one epoch of training for the given model.
     
@@ -15,33 +13,57 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
     :param optimizer: Optimizer for training (torch.optim object)
     :param criterion: Loss function for training (torch.nn object)
     :param device: Device to run training on (e.g., 'cuda' or 'cpu')
+    :param scaler: GradScaler for Automatic Mixed Precision (optional)
     """
     model.train()
     running_loss = 0.0
-    train_preds = []
-    train_targets = []
+
+    # Initialize torchmetrics on GPU for fast computation
+    accuracy_metric = MultilabelAccuracy(num_labels=num_labels, average='micro').to(device)
+    f1_metric = MultilabelF1Score(num_labels=num_labels, average='micro').to(device)
+    auroc_metric = MultilabelAUROC(num_labels=num_labels, average='micro').to(device)
 
     for _, all in tqdm(enumerate(train_loader), total=len(train_loader)):
         images, labels = all[0].to(device), all[1].to(device)
         optimizer.zero_grad()
-        outputs = model(images) # gets the logits (raw outputs) from the model
-        loss = criterion(outputs, labels) # computes the loss between the model's (sigmoided) outputs and the true labels
-        loss.backward()
-        optimizer.step()
+
+        # Use autocast for mixed precision if scaler is provided
+        if scaler is not None:
+            with autocast(device_type=device.type):
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
         running_loss += loss.item()
-        preds = torch.sigmoid(outputs) > 0.5 # applies sigmoid to get probabilities and then thresholds at 0.5 to get binary predictions
-        train_preds.extend(preds.cpu().detach().numpy())
-        train_targets.extend(labels.cpu().detach().numpy())
+
+        # Use probabilities for metrics (not hard predictions)
+        preds_probs = torch.sigmoid(outputs)
+        labels_long = labels.long()  # Convert to int for torchmetrics
+        accuracy_metric.update(preds_probs, labels_long)
+        f1_metric.update(preds_probs, labels_long)
+        auroc_metric.update(preds_probs, labels_long)
 
     train_loss = running_loss / len(train_loader)
-    train_accuracy = accuracy_score(train_targets, train_preds)
-    train_f1 = f1_score(train_targets, train_preds, average='micro')
-    train_roc_auc = roc_auc_score(train_targets, train_preds, average='micro')
+    train_accuracy = accuracy_metric.compute().item()
+    train_f1 = f1_metric.compute().item()
+    train_roc_auc = auroc_metric.compute().item()
+
+    # Reset metrics for next epoch
+    accuracy_metric.reset()
+    f1_metric.reset()
+    auroc_metric.reset()
 
     return train_loss, train_accuracy, train_f1, train_roc_auc
 
 
-def validate(model, val_loader, criterion, device):
+def validate(model, val_loader, criterion, device, num_labels):
     """
     Performs validation for the given model.
     
@@ -52,8 +74,11 @@ def validate(model, val_loader, criterion, device):
     """
     model.eval()
     val_running_loss = 0.0
-    val_preds = []
-    val_targets = []
+
+    # Initialize torchmetrics on GPU for fast computation
+    accuracy_metric = MultilabelAccuracy(num_labels=num_labels, average='micro').to(device)
+    f1_metric = MultilabelF1Score(num_labels=num_labels, average='micro').to(device)
+    auroc_metric = MultilabelAUROC(num_labels=num_labels, average='micro').to(device)
 
     with torch.no_grad():
         for images, labels in val_loader:
@@ -61,19 +86,23 @@ def validate(model, val_loader, criterion, device):
             outputs = model(images)
             loss = criterion(outputs, labels)
             val_running_loss += loss.item()
-            preds = torch.sigmoid(outputs) > 0.5
-            val_preds.extend(preds.cpu().detach().numpy())
-            val_targets.extend(labels.cpu().detach().numpy())
+
+            # Use probabilities for metrics (not hard predictions)
+            preds_probs = torch.sigmoid(outputs)
+            labels_long = labels.long()  # Convert to int for torchmetrics
+            accuracy_metric.update(preds_probs, labels_long)
+            f1_metric.update(preds_probs, labels_long)
+            auroc_metric.update(preds_probs, labels_long)
 
     val_loss = val_running_loss / len(val_loader)
-    val_accuracy = accuracy_score(val_targets, val_preds)
-    val_f1 = f1_score(val_targets, val_preds, average='micro')
-    val_roc_auc = roc_auc_score(val_targets, val_preds, average='micro')
+    val_accuracy = accuracy_metric.compute().item()
+    val_f1 = f1_metric.compute().item()
+    val_roc_auc = auroc_metric.compute().item()
 
     return val_loss, val_accuracy, val_f1, val_roc_auc
 
 
-def train_and_test_model(model, train_loader, test_loader, optimizer, criterion, device, batch_size=32, test_size=0.3):
+def train_and_test_model(model, train_loader, test_loader, optimizer, criterion, device, num_labels, scaler=None):
     """
     Performs training and evaluation of the given model on the provided dataset.
     
@@ -86,9 +115,9 @@ def train_and_test_model(model, train_loader, test_loader, optimizer, criterion,
     """
     
     # Train the model
-    train_loss, train_accuracy, train_f1, train_roc_auc = train_one_epoch(model, train_loader, optimizer, criterion, device)
+    train_loss, train_accuracy, train_f1, train_roc_auc = train_one_epoch(model=model, train_loader=train_loader, optimizer=optimizer, criterion=criterion, device=device, num_labels=num_labels, scaler=scaler)
     
     # Testing on test set
-    test_loss, test_accuracy, test_f1, test_roc_auc = validate(model, test_loader, criterion, device)
+    test_loss, test_accuracy, test_f1, test_roc_auc = validate(model=model, val_loader=test_loader, criterion=criterion, device=device, num_labels=num_labels)
     
     return train_loss, train_accuracy, train_f1, train_roc_auc, test_loss, test_accuracy, test_f1, test_roc_auc

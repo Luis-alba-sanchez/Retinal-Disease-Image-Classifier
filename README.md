@@ -61,8 +61,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 3. Install dependencies:
 ```bash
 pip install --upgrade pip setuptools wheel
-pip install numpy pillow matplotlib pandas joblib
+pip install numpy pillow matplotlib pandas tqdm
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+pip install torchmetrics
 ```
 
 ### Download Dataset

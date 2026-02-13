@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 
 
+
 def plot_training_statistics(
         training_stats, 
         title="Training Statistics", 
@@ -37,6 +38,20 @@ def plot_training_statistics(
     plt.tight_layout()
     plt.savefig(saving_path)
     plt.show()
+
+
+def print_training_statistics(
+        train_loss, train_accuracy, train_f1, train_roc_auc, 
+        test_loss, test_accuracy, test_f1, test_roc_auc,
+        get_device_properties, memory_allocated, memory_reserved): 
+    """ Prints training statistics such as loss, accuracy, and F1-score for each epoch. 
+    Parameters: 
+    - training_stats (dict): A dictionary containing lists of training statistics with keys: 'train_losses', 'train_accuracies', 'train_f1s', 'val_losses', 'val_accuracies', 'val_f1s'. """
+    print('-' * 96)
+    print(f"| Train Loss: {train_loss:.4f} | Train Accuracy: {train_accuracy:.4f} | Train F1-score: {train_f1:.4f} | Train ROC-AUC: {train_roc_auc:.4f} |")
+    print(f"| Test Loss:  {test_loss:.4f} | Test Accuracy:  {test_accuracy:.4f} | Test F1-score:  {test_f1:.4f} | Test ROC-AUC:  {test_roc_auc:.4f} |")
+    print(f"| GPU VRAM checks -> | total: {get_device_properties:.2f} Go        | used: {memory_allocated:.2f} Go          | cached: {memory_reserved:.2f} Go       |")
+    print('-' * 96)
 
 
 # import matplotlib.pyplot as plt
