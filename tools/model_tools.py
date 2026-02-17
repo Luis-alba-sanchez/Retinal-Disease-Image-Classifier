@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 from torchmetrics.classification import MultilabelAccuracy, MultilabelF1Score, MultilabelAUROC
+from torchmetrics.classification import BinaryAccuracy, BinaryF1Score, BinaryAUROC
 from torch.amp import autocast
 
 
@@ -18,15 +19,19 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device, num_label
     model.train()
     running_loss = 0.0
 
-    # Initialize torchmetrics on GPU for fast computation
-    accuracy_metric = MultilabelAccuracy(num_labels=num_labels, average='micro').to(device)
-    f1_metric = MultilabelF1Score(num_labels=num_labels, average='micro').to(device)
-    auroc_metric = MultilabelAUROC(num_labels=num_labels, average='micro').to(device)
+    if num_labels == 1:
+        accuracy_metric = BinaryAccuracy().to(device)
+        f1_metric = BinaryF1Score().to(device)
+        auroc_metric = BinaryAUROC().to(device)
+    else:
+        accuracy_metric = MultilabelAccuracy(num_labels=num_labels, average='micro').to(device)
+        f1_metric = MultilabelF1Score(num_labels=num_labels, average='micro').to(device)
+        auroc_metric = MultilabelAUROC(num_labels=num_labels, average='micro').to(device)
 
     for _, all in tqdm(enumerate(train_loader), total=len(train_loader)):
         images, labels = all[0].to(device), all[1].to(device)
         optimizer.zero_grad()
-
+    
         # Use autocast for mixed precision if scaler is provided
         if scaler is not None:
             with autocast(device_type=device.type):
@@ -75,10 +80,14 @@ def validate(model, val_loader, criterion, device, num_labels):
     model.eval()
     val_running_loss = 0.0
 
-    # Initialize torchmetrics on GPU for fast computation
-    accuracy_metric = MultilabelAccuracy(num_labels=num_labels, average='micro').to(device)
-    f1_metric = MultilabelF1Score(num_labels=num_labels, average='micro').to(device)
-    auroc_metric = MultilabelAUROC(num_labels=num_labels, average='micro').to(device)
+    if num_labels == 1:
+        accuracy_metric = BinaryAccuracy().to(device)
+        f1_metric = BinaryF1Score().to(device)
+        auroc_metric = BinaryAUROC().to(device)
+    else:
+        accuracy_metric = MultilabelAccuracy(num_labels=num_labels, average='micro').to(device)
+        f1_metric = MultilabelF1Score(num_labels=num_labels, average='micro').to(device)
+        auroc_metric = MultilabelAUROC(num_labels=num_labels, average='micro').to(device)
 
     with torch.no_grad():
         for images, labels in val_loader:
