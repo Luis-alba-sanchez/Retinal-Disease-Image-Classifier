@@ -1,6 +1,6 @@
 # Eye Disease Classifier
 
-A PyTorch-based deep learning project for automatic classification of ocular diseases from retinal fundus images. This project explores multiple CNN architectures and transfer learning approaches for binary disease risk classification.
+A PyTorch-based deep learning project for automatic classification of ocular diseases from retinal fundus images. This project explores multiple CNN architectures and transfer learning approaches for binary disease risk classification and multi label classification.
 
 ## 🎯 Project Goal
 
@@ -9,7 +9,7 @@ This is a learning-focused project designed to:
 - Explore and compare multiple model architectures (Simple CNN, DenseNet121, ResNet50)
 - Implement transfer learning and fine-tuning techniques
 - Build a strong portfolio project for roles in ML/AI and bioinformatics
-- Serve as a foundation for future Vision Transformer implementations
+- Implement and train Vision Transformer models for medical image classification
 
 ## 📊 Dataset
 
@@ -32,15 +32,16 @@ The project includes implementations of multiple approaches:
 
 | Model | Type | Status |
 |-------|------|--------|
-| Simple CNN | Custom CNN | Training |
-| ResNet50 | Transfer Learning (Fine-tuned) | Training |
-| DenseNet121 | Transfer Learning (Fine-tuned) | Training |
-| Vision Transformer | ViT-based classifier | Planned |
+| Simple CNN | Custom CNN | Trained |
+| ResNet50 | Transfer Learning (Fine-tuned) | Trained |
+| DenseNet121 | Transfer Learning (Fine-tuned) | Trained |
+| Vision Transformer | ViT-based classifier | Trained |
+| Swin Transformer | Fine-tuned Swin-T | Trained |
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.13
 - GPU with CUDA support (tested on RTX 5070 Ti)
 - At least 16GB RAM for model training
 
@@ -63,7 +64,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install --upgrade pip setuptools wheel
 pip install numpy pillow matplotlib pandas tqdm
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-pip install torchmetrics
+pip install torchmetrics torchinfo
 ```
 
 ### Download Dataset
@@ -74,35 +75,43 @@ pip install torchmetrics
 
 ```
 ├── classes/                          # Model definitions
-│   ├── RetinaSimpleCNN.py           # Custom CNN architecture
-│   ├── CNNBinaryClassif.py          # Binary classification wrapper
+│   ├── ViT.py                        # Vision Transformer implementation
+│   ├── RetinaSimpleCNN.py            # Custom CNN architecture
+│   ├── CNNBinaryClassif.py           # Binary classification wrapper
 │   ├── CNNMultiClassMultiLabeling.py # Multi-label approach
-│   └── RetinaDataset.py             # PyTorch Dataset class
+│   └── RetinaDataset.py              # PyTorch Dataset class
 │
 ├── model-training/                   # Training pipelines
-│   ├── Training-Notebooks/          # Jupyter notebooks for training
+│   ├── Training-Notebooks/           # Jupyter notebooks for training
 │   │   ├── Simple_CNN_BC.ipynb
+│   │   ├── Simple_CNN_MCMLC.ipynb
+│   │   ├── FT_ResNet50_BC.ipynb
 │   │   ├── FT_ResNet50_MCMLC.ipynb
-│   │   └── FT_DenseNet121_MCMLC.ipynb
-│   ├── Models/                      # Trained model checkpoints
-│   └── Training-Statistics/         # CSV logs of training metrics
+│   │   ├── FT_DenseNet121_BC.ipynb
+│   │   ├── FT_DenseNet121_MCMLC.ipynb
+│   │   ├── FT_swin_t_BC.ipynb        # NEW
+│   │   ├── FT_swin_t_MCMLC.ipynb     # NEW
+│   │   └── Vision-Transformer-pytorch.ipynb  # NEW
+│   ├── Models/                       # Trained model checkpoints
+│   ├── Training-Statistics/          # CSV logs of training metrics
+│   └── Training-Evolution-images/    # NEW - Training curves
 │
 ├── data/                             # Dataset management
-│   ├── organizer.py                 # Dataset preparation scripts
-│   ├── Training-Set/                # Training images & labels
-│   ├── Evaluation-Set/              # Validation images & labels
-│   └── mean-std/                    # Normalization statistics
+│   ├── Training-Set/                 # Training images & labels
+│   ├── Test-Set/                     # Test images & labels
+│   ├── Evaluation-Set/               # Validation images & labels
+│   ├── source/                       # zip data from paper
+│   └── mean-std/                     # Normalization statistics
 │
 ├── tools/                            # Utility modules
 │   ├── data_tools.py                # Data loading & preprocessing
 │   ├── model_tools.py               # Model utilities
 │   └── visualization_tools.py       # Plotting & visualization
 │
-├── EDA/                              # Exploratory Data Analysis
-│   ├── calculate_normalisation_statistics.py
-│   └── DataSet_Analisys.ipynb
-│
-└── test.ipynb                        # Testing & inference examples
+└── EDA/                              # Exploratory Data Analysis
+    ├── calculate_normalisation_statistics.py
+    └── DataSet_Analisys.ipynb
+
 ```
 
 ## 📖 Usage
@@ -119,13 +128,9 @@ Refer to the Jupyter notebooks in `model-training/Training-Notebooks/`:
    - Open `FT_ResNet50_MCMLC.ipynb` or `FT_DenseNet121_MCMLC.ipynb`
    - Learn how to fine-tune pre-trained models
 
-### Running Inference
-
-Use `test.ipynb` to load a trained model and make predictions on new retinal images.
-
 ### Data Exploration
 
-Run `EDA/DataSet_Analisys.ipynb` to explore dataset statistics and distribution.
+Open `EDA/DataSet_Analisys.ipynb` to explore dataset statistics and distribution.
 
 ## 🔍 Key Features
 
@@ -135,15 +140,19 @@ Run `EDA/DataSet_Analisys.ipynb` to explore dataset statistics and distribution.
 - **Multi-scale Image Processing**: Support for different input sizes (256×256, 516×516, 1024×1024)
 - **Training Tracking**: CSV-based logging of training metrics and evolution
 - **Modular Design**: Reusable classes for easy experimentation
+- **Vision Transformer**: ViT architecture for advanced image understanding
+- **Swin Transformer**: Fine-tuned Swin-T for efficient classification
+- **Mixed Precision Training**: GPU optimization with torch.amp.GradScaler
+- **Loss Balancing**: BCEWithLogitsLoss with class weight coefficients
 
 ## 📈 Current Status
 
 - ✅ Data loading and preprocessing pipelines
-- ✅ Multiple model architectures implemented
-- ✅ Training frameworks set up
-- 🔄 **Currently**: Finding optimal models for high-resolution images (1024×1024)
-- ⏳ Model training and evaluation coming soon
-- 🎯 Vision Transformer implementation planned for future
+- ✅ Multiple model architectures implemented (CNN, ResNet50, DenseNet121)
+- ✅ Vision Transformer implementation completed
+- ✅ Swin Transformer fine-tuning in progress
+- 🔄 **Currently**: Training and optimizing ViT and Swin-T models (256×256 resolution)
+- ⏳ Performance evaluation and benchmarking coming soon
 
 ## 🤖 Hardware
 
@@ -175,13 +184,8 @@ If you're learning PyTorch and computer vision:
 If you use the RFMiD dataset, please cite:
 - Pachade, R.R.; Porwal, P.; Kokil, P.; et al. Retinal Fundus Multi-Disease Image Dataset (RFMiD): A Dataset for Multi-Disease Classification of Retinal Fundus Images Using Conventional Machine Learning and Deep Learning. Data 2021, 6, 14. https://doi.org/10.3390/data6020014
 
-## 📝 License
-
-This project uses the RFMiD dataset under **CC-BY 4.0** license.
-
 ## 🌟 Future Work
 
-- Vision Transformer (ViT) implementation for retinal image classification
 - Ensemble methods combining multiple architectures
 - Explainability analysis (Grad-CAM, attention maps)
 - Web interface for inference
@@ -190,6 +194,7 @@ This project uses the RFMiD dataset under **CC-BY 4.0** license.
 ## 👤 Author
 
 Created as a portfolio project for roles in Machine Learning/AI and Bioinformatics.
+LinkedIn : https://www.linkedin.com/in/luis-alexandre-alba-sanchez/ 
 
 ---
 
